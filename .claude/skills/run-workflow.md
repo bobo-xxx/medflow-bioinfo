@@ -142,10 +142,29 @@ conda run -p runs/<workflow>/envs/<step-id> --cwd <node-dir> \
 - **Do not claim "node doesn't produce X" without first checking whether your setup broke a sidecar dependency**
 - Report any mismatch with the specific condition found
 
+**Inline transformation (when needed):**
+
+If `file_bindings` for this step contains `extract_group_col` or `transform` directives:
+1. Read the source file identified in the binding
+2. Execute the transformation inline — write a minimal script, not a new node:
+   - `extract_group_col: "er_status"` → extract `sample_id` + `er_status` columns into a two-column CSV:
+     ```python
+     import csv
+     with open("merged_metadata.csv") as inf, open("sample_group_map.csv", "w") as outf:
+         r = csv.DictReader(inf); w = csv.writer(outf)
+         w.writerow(["sample_id", "group"])
+         # Find the sample ID column and group column
+         for row in r: w.writerow([row["geo_accession"], row["er_status"]])
+     ```
+   - `transform: "transpose"` → transpose matrix
+   - `transform: "merge_columns"` → combine multiple columns
+3. Write the output file to the current step's outdir
+4. Bind the transformed file to the downstream parameter
+5. Report: "Inline transform: merged_metadata.csv[er_status] → sample_group_map.csv (P=342, N=166)"
+
 **Wire data to downstream:**
-- Read upstream SKILL.md outputs → file paths on disk
-- Read downstream SKILL.md inputs → required semantic_types
-- Match by: `file_layout` declarations → semantic_type → format → filename
+- Check `file_bindings` in workflow.json first — if present, use the declared source_step, prefer, and transform directives
+- If no file_bindings: read upstream SKILL.md outputs vs downstream inputs, match by semantic_type
 - Pass resolved file paths (not directories) for `param_type: file`
 
 ### 6. Report
