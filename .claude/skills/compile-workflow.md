@@ -26,11 +26,13 @@ Read the protocol `.md` file. Extract:
 
 ### 2. Discover Available Nodes
 
-Scan `nodes/` directory for node packages. For each node, read both:
-- `SKILL.md` frontmatter: `name`, `type`, `inputs`/`outputs` (semantic_type, format), `parameters` (bind, type, required, default), `entry_point`
-- **The entry point** (`scripts/main.R` or `scripts/main.py`): which subcommands exist, what each produces, whether outputs are conditional
+First, read `nodes/manifest.yaml` for a quick index of available nodes, their capabilities, and file layout conventions.
 
-Build a registry: `{name: {version, manifest, subcommands}}`.
+Then, for each node listed, read:
+- `SKILL.md` frontmatter: `name`, `type`, `inputs`/`outputs` (semantic_type, format), `parameters` (bind, type, required, default), `entry_point`, `file_layout`, `file_discovery`
+- **The entry point** (`scripts/main.R` or `scripts/main.py`): verify subcommands, check for conditional outputs, confirm file_discovery declarations
+
+Build a registry: `{name: {version, manifest, subcommands, produces, consumes}}`.
 
 ### 3. Match Steps to Nodes
 
