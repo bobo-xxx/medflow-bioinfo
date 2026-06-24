@@ -15,6 +15,10 @@ Execute a workflow from a workflow.json file.
 
 Read `workflow.json`. Validate structure: steps, edges, each step has `id`, `node`, `config`.
 
+**If `file_bindings` is present:** Use it as the authoritative wiring map. `file_bindings` was produced by compile-workflow and contains exact file resolution instructions. The checklist items marked `[fb]` below can skip inference — use the binding directly.
+
+**If `data_type_notes` is present:** Trust the compile agent's data inspection. Do not re-inspect unless something looks wrong at runtime.
+
 ### 2. Resolve Node Packages
 
 For each step:
@@ -23,9 +27,8 @@ For each step:
 3. If missing, fetch from git: `git clone <url>` using the node's registry entry
 4. **Read `SKILL.md`** to get the node manifest (parameters, entry point, env file)
 5. **Read the node's entry point** (`scripts/main.R` or `scripts/main.py`):
-   - Check how it discovers input files (recursive? flat? pattern?)
-   - Check if outputs are conditional on flags
-   - Check what subcommands produce what outputs
+   - Check `file_discovery` and `file_layout` in SKILL.md first — these are authoritative
+   - Verify the entry point matches the SKILL.md declarations
    - **Do not guess file layout requirements from directory structure alone**
 
 ### 3. Build Execution Plan

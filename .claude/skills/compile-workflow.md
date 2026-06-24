@@ -83,6 +83,23 @@ For each edge `A → B`:
 
 ### 7. Generate workflow.json
 
+The workflow.json must be **execution-ready** — the run agent should be able to dispatch every step without reading node code.
+
+For each step, produce a `config` block that covers:
+
+- **Subcommand**: which action to invoke
+- **Required config params**: all `bind: config` parameters that are required
+- **Method overrides**: when the node's default doesn't match the data type
+- **Cutoff overrides**: when defaults don't fit the research question or sample size
+- **Group specification**: which column to use, how to map labels
+
+For each edge, produce `file_bindings` that tell the run agent exactly how to wire data:
+
+- **Which upstream step** produces the file
+- **Which file pattern** to look for (from upstream SKILL.md outputs)
+- **Which downstream param** it maps to (from downstream SKILL.md inputs)
+- **How to resolve** if the file needs transformation (group column extraction, etc.)
+
 Write to `workflows/<name>.json`:
 
 ```json
@@ -90,22 +107,72 @@ Write to `workflows/<name>.json`:
   "schema_version": "1.0",
   "name": "<kebab-case-name>",
   "description": "<research question summary>",
+  "research_question": "Compare ER+ vs ER- breast cancer tumors to identify differentially expressed genes",
   "steps": [
     {
-      "id": "<step-id>",
-      "node": "<node-name>@<version>",
+      "id": "fetch1",
+      "node": "geo-microarray-processing@1.0.0",
       "config": {
         "subcommand": "fetch",
-        "gse_id": "GSE25066"
+        "gse_id": "GSE25066",
+        "outdir": "runs/<workflow>/fetch1"
+      }
+    },
+    {
+      "id": "merge",
+      "node": "batch-correction@1.0.0",
+      "config": {
+        "subcommand": "union",
+        "pattern": "expr_gene_*.csv",
+        "outdir": "runs/<workflow>/merge"
+      }
+    },
+    {
+      "id": "deg",
+      "node": "differential-analysis@1.0.0",
+      "config": {
+        "subcommand": "run",
+        "method": "limma",
+        "p_set": "padj",
+        "logfc_cutoff": "0.5"
       }
     }
   ],
   "edges": [
-    {"from": "<step-id>", "to": "<step-id>"}
+    {"from": "fetch1", "to": "merge"},
+    {"from": "fetch2", "to": "merge"},
+    {"from": "merge", "to": "deg"}
   ],
-  "data_flow_warnings": [
-    {"edge": "merge→deg", "gap": "sample_group_map not produced by upstream, config override needed"}
-  ],
+  "file_bindings": {
+    "merge": {
+      "--indir": {
+        "sources": ["fetch1", "fetch2"],
+        "resolve": "data_root",
+        "note": "Node uses recursive=TRUE with pattern=expr_gene_*.csv"
+      }
+    },
+    "deg": {
+      "--mat": {
+        "source_step": "merge",
+        "semantic_type": "expression_matrix",
+        "prefer": "merged_expression.csv",
+        "fallback": "first .csv matching 'expression'"
+      },
+      "--map": {
+        "source_step": "merge",
+        "semantic_type": "sample_metadata",
+        "prefer": "merged_metadata.csv",
+        "extract_group_col": "er_status",
+        "note": "merged_metadata.csv has many columns; extract sample_id + er_status into two-column CSV for downstream"
+      }
+    }
+  },
+  "data_type_notes": {
+    "expression_data": "log2-transformed microarray (GPL96 Affymetrix)",
+    "sample_count": 786,
+    "groups": {"P": "ER-positive", "N": "ER-negative"}
+  },
+  "data_flow_warnings": [],
   "created_at": "<ISO timestamp>"
 }
 ```
@@ -113,7 +180,8 @@ Write to `workflows/<name>.json`:
 ### 8. Report
 
 - Workflow name, step count, edge count
-- Node assignments per step
-- Config bindings derived from research question
+- Node assignments per step with versions
+- Config decisions: method chosen, cutoffs applied, group column selected
+- File bindings: which files flow between which steps
 - Data flow warnings (if any)
 - Unresolved steps (if any)
