@@ -48,86 +48,115 @@ If `--live` not set:
 
 If `--live` is set:
 
-For each step in topological order:
+For each step in topological order, you MUST generate and complete a pre-flight checklist BEFORE dispatching the node. You MUST NOT proceed to the next checklist item until the current one is confirmed.
 
-**a. Before dispatching — mandatory checks:**
+#### Pre-flight Checklist Template
 
-1. **Read the node's SKILL.md** — check inputs, outputs, parameters, defaults, exceptions
-2. **Read the node's entry point** (`scripts/main.R` or `scripts/main.py`):
-   - How does it find input files? (`list.files(recursive=TRUE)`? `Sys.glob`?)
-   - What subcommands exist? What does each produce?
-   - Are any outputs conditional on flags?
-3. **Check data type compatibility:**
-   - If expression data is log2-transformed microarray → use limma (not DESeq2/edgeR)
-   - If data is raw counts → DESeq2/edgeR is appropriate
-   - Verify by inspecting a few rows of the actual input file
-4. **Check SKILL.md defaults against the actual data and research question**
-   - Default method correct for this data type?
-   - Default cutoffs appropriate for the sample size?
-   - Override defaults via `config` in workflow.json if needed
+For each step, create this exact checklist and work through it:
 
-**b. Prepare environment:**
-- Read node's `envs/env-*.yaml` (or `env.yaml` legacy)
-- Prefer `envs/` directory (new format) over root `env.yaml` (legacy)
-- Create conda env at `runs/<workflow>/envs/<step-id>/` if not exists:
-  ```bash
-  conda env create -f <env-file> -p runs/<workflow>/envs/<step-id>
-  ```
-- If the env file has `nodefaults` in channels and conda still tries defaults, check system conda config
-- Use proxy `http://localhost:2999` if network is slow
-- **Do not use pre-existing global conda environments** — create fresh per-run
+```
+□ 1. SKILL.md read: inputs=[...], outputs=[...], parameters=[...]
+□ 2. Entry point read: subcommands=[...], file_discovery: {recursive, pattern, sidecar?}
+□ 3. Upstream files inspected: `find <upstream-outdir> -type f` (NOT flat ls)
+□ 4. File layout confirmed: nesting? sidecar files present?
+□ 5. Data type checked: opened sample file, values are (integer counts | log2 | normalized)
+□ 6. Method matched: using (limma | DESeq2 | edgeR) because data is (log2 | counts)
+□ 7. Config complete: required params=[...], provided=[...], overrides applied=[...]
+□ 8. Env ready: conda env created at runs/<workflow>/envs/<step-id>/
+```
 
-**c. Build CLI args:**
-- From step `config` field → match to node parameters with `bind: config`
-- From upstream step outputs → match to node parameters with `bind: upstream`:
-  - **Single upstream**: pass the upstream outdir directly (e.g., `--mat runs/<workflow>/merge/`)
-  - **Multiple upstreams**: pass the run data root (e.g., `--indir runs/<workflow>/`)
-  - **Do NOT symlink, move, or restructure upstream output files** — the node handles its own file discovery. If a node expects a specific layout, it's documented in its code.
-- Framework params (`--outdir`) → set to `runs/<workflow>/<step-id>/`
-- Skip null/empty config values — they represent absent optional parameters
+**Each `□` must become `✓` before dispatch. Do not proceed past an unchecked box.**
 
-**d. Dispatch node:**
+#### Checklist Item Details
+
+**1. SKILL.md read:**
+- Parse the YAML frontmatter
+- List all `inputs`, `outputs`, `parameters` with their types and defaults
+- Note `file_layout` and `file_discovery` if declared
+
+**2. Entry point read:**
+- Open `scripts/main.R` or `scripts/main.py`
+- Find the subcommand dispatch section — list all valid subcommands
+- Check `list.files` / `glob` / `Sys.glob` calls: recursive or flat?
+- Check for sidecar file logic: does it look for companion files?
+- Check for conditional output logic: `if (!is.null(meta))` — when does an output NOT get produced?
+
+**3. Upstream files inspected:**
+- Run `find <upstream-outdir> -type f` — NOT `ls`, NOT `ls -la`
+- List every file with its full path
+- If multiple upstreams, inspect each one separately
+
+**4. File layout confirmed:**
+- Compare SKILL.md `file_layout` against actual directory structure
+- If `file_discovery.sidecar` declared, verify companion files exist
+- If sidecar files are missing and they're `needed_for` an output, that output WILL be silently skipped
+- **Never symlink files between directories** — this breaks sidecar lookups
+
+**5. Data type checked:**
+- Open a sample input file: `head -3` or `read.csv(..., nrows=5)`
+- Check: are values integers (counts)? decimals around 0-20 (log2)? 0-1 (normalized)?
+- Record the observed data type
+
+**6. Method matched:**
+- Log2 microarray data → `--method limma`
+- Raw integer counts → `--method DESeq2` or `--method edgeR`
+- Unknown → ask user, do not guess
+- If the node's default method is wrong for this data type, override it in config
+
+**7. Config complete:**
+- List all required parameters (bind: config)
+- List all provided values from workflow.json `config`
+- Flag missing required params
+- Flag params where the default is wrong for this data/question
+- Apply overrides
+
+**8. Env ready:**
+- Create env if not exists: `conda env create -f <env-file> -p runs/<workflow>/envs/<step-id>`
+- Use `--override-channels` or ensure `nodefaults` in env file channels
+- Never use pre-existing global conda environments
+
+#### Dispatch and Verify
+
+After checklist is complete:
+
+**Dispatch:**
 ```bash
 conda run -p runs/<workflow>/envs/<step-id> --cwd <node-dir> \
   Rscript scripts/main.R <subcommand> --arg1 val1 --outdir runs/<workflow>/<step-id>
 ```
 
-**e. Handle result:**
-- Parse NDJSON stdout → extract result line, files, metrics
-- Check exit code: 0 = success, non-zero = check `exceptions` in SKILL.md
-- Handle gate decisions: pass → continue, caution → continue with warning, rerun → retry upstream, veto → pause
-- If node fails with an exception declared in SKILL.md (`skip_with_warning`), record warning and continue if allowed
-- If node fails undeclared → escalate to user
+**Handle result:**
+- Parse NDJSON stdout → extract result line, files, metadata
+- Exit code: 0 = success, non-zero = check `exceptions` in SKILL.md
 
-**f. Verify outputs exist:**
-- After dispatch, check that declared output files actually exist on disk
-- Cross-reference SKILL.md `outputs` list with actual files in the outdir
-- Report any mismatch: "SKILL.md declares X but only Y produced"
-- This catches bugs where SKILL.md and code have drifted
+**Post-flight verification (MANDATORY):**
+```
+□ Outputs declared vs produced: SKILL.md says [X, Y, Z], disk has [actual files]
+□ Any mismatch? If yes, check: conditional output? sidecar missing? wrong subcommand?
+```
+- Cross-reference SKILL.md `outputs` list with `find <outdir> -type f`
+- If a declared output is missing: read the node code to find the condition that produces it
+- **Do not claim "node doesn't produce X" without first checking whether your setup broke a sidecar dependency**
+- Report any mismatch with the specific condition found
 
-**g. Wire data to downstream:**
-- Read upstream SKILL.md outputs
-- Read downstream SKILL.md inputs
-- Match by semantic_type → format → filename
-- When directory needs file resolution: find specific files within upstream outdir
-- Pass resolved file paths to downstream step
+**Wire data to downstream:**
+- Read upstream SKILL.md outputs → file paths on disk
+- Read downstream SKILL.md inputs → required semantic_types
+- Match by: `file_layout` declarations → semantic_type → format → filename
+- Pass resolved file paths (not directories) for `param_type: file`
 
 ### 6. Report
 
-For each step: status (complete/failed/skipped), files produced, runtime, any warnings.
+For each step: status, files produced, runtime, warnings, any output mismatches found.
 Final: workflow status, output directory, key result files.
 
 ## File Resolution Protocol
 
-When a downstream node expects specific files but upstream produces a directory:
-
-1. Read upstream output directory → list all files recursively
-2. Read downstream input declarations (from SKILL.md)
-3. Match by: exact filename → semantic_type → format → file content inspection
-4. Prefer specific files over directories when `param_type: file`
-5. **Do not move, symlink, or copy files** to force matches — pass the discovered paths directly
-6. If ambiguous: report options and ask user, or escalate if agentic path unavailable
-7. Bind resolved file paths to downstream args
+1. Use `find <dir> -type f` to list ALL files recursively — never flat `ls`
+2. Match by: exact filename → semantic_type → format → file content inspection
+3. Respect `file_layout` declarations in SKILL.md (nesting, sidecar)
+4. **Never symlink, move, or copy files** — breaks sidecar assumptions
+5. If ambiguous: report options and ask user
 
 ## Anti-Patterns
 
