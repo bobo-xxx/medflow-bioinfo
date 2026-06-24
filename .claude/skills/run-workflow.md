@@ -23,10 +23,16 @@ Read `workflow.json`. Validate structure: steps, edges, each step has `id`, `nod
 
 For each step:
 1. Parse `node` field: `<name>@<version>` or just `<name>` (use latest version)
-2. Check `nodes/<name>@<version>/` exists
-3. If missing, fetch from git: `git clone <url>` using the node's registry entry
-4. **Read `SKILL.md`** to get the node manifest (parameters, entry point, env file)
-5. **Read the node's entry point** (`scripts/main.R` or `scripts/main.py`):
+2. Check `nodes/manifest.yaml` for the node's metadata (url, subcommands, produces/consumes, file_layout)
+3. Check `nodes/<name>@<version>/` exists — if yes, use it directly
+4. If missing, fetch from git using the url in manifest.yaml:
+   ```bash
+   git clone <url> nodes/<name>@<version>
+   cd nodes/<name>@<version> && git checkout <commit> && cd ../..
+   ```
+5. **Never symlink** — symlinks break sidecar file lookups (dirname resolution)
+6. **Read `SKILL.md`** to get the full node manifest (parameters, entry point, env file)
+7. **Read the node's entry point** (`scripts/main.R` or `scripts/main.py`):
    - Check `file_discovery` and `file_layout` in SKILL.md first — these are authoritative
    - Verify the entry point matches the SKILL.md declarations
    - **Do not guess file layout requirements from directory structure alone**
