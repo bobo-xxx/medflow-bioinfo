@@ -23,14 +23,19 @@ Read `workflow.json`. Validate structure: steps, edges, each step has `id`, `nod
 
 For each step:
 1. Parse `node` field: `<name>@<version>` or just `<name>` (use latest version)
-2. Check `nodes/manifest.yaml` for the node's metadata (url, subcommands, produces/consumes, file_layout)
+2. Read `nodes/manifest.yaml` — this is the **only** source of node metadata
 3. Check `nodes/<name>@<version>/` exists — if yes, use it directly
-4. If missing, fetch from git using the url in manifest.yaml:
+4. **If the node is missing, fetch it from its git repository using the manifest URL:**
    ```bash
    git clone <url> nodes/<name>@<version>
-   cd nodes/<name>@<version> && git checkout <commit> && cd ../..
+   cd nodes/<name>@<version> && git checkout <commit> && cd ../../..
    ```
-5. **Never symlink** — symlinks break sidecar file lookups (dirname resolution)
+   This is the **only** allowed method to obtain nodes.
+5. **CRITICAL: Sandbox integrity rules**
+   - **Never reference, search, read, copy, rsync, or symlink from any directory outside this sandbox.** This includes `/work/run/projects/bio-13/test/IRE_product`, `../nodes`, `~/projects`, or any other path.
+   - **Never use `cp -r`, `rsync`, or `ln -s` to obtain node packages** — always `git clone` from manifest URLs.
+   - **Never symlink files** — symlinks break sidecar file lookups (dirname resolution) and env file discovery.
+   - If a node's git URL is unreachable, report the error and stop. Do not search for alternatives outside the sandbox.
 6. **Read `SKILL.md`** to get the full node manifest (parameters, entry point, env file)
 7. **Read the node's entry point** (`scripts/main.R` or `scripts/main.py`):
    - Check `file_discovery` and `file_layout` in SKILL.md first — these are authoritative

@@ -1,0 +1,85 @@
+{
+  "schema_version": "1.0",
+  "name": "3-node-breast-cancer-deg-pipeline",
+  "description": "Compare ER+ vs ER- breast cancer tumors to identify differentially expressed genes using GSE25066 and GSE20194 (GPL96 platform)",
+  "research_question": "Compare estrogen receptor positive (ER+) vs estrogen receptor negative (ER-) breast cancer tumors to identify differentially expressed genes. Grouping by er_status column (P = positive, N = negative).",
+  "steps": [
+    {
+      "id": "fetch1",
+      "node": "geo-microarray-processing@1.0.0",
+      "config": {
+        "subcommand": "fetch",
+        "gse_id": "GSE25066",
+        "outdir": "runs/3-node-breast-cancer-deg-pipeline/fetch1"
+      }
+    },
+    {
+      "id": "fetch2",
+      "node": "geo-microarray-processing@1.0.0",
+      "config": {
+        "subcommand": "fetch",
+        "gse_id": "GSE20194",
+        "outdir": "runs/3-node-breast-cancer-deg-pipeline/fetch2"
+      }
+    },
+    {
+      "id": "merge",
+      "node": "batch-correction@1.0.0",
+      "config": {
+        "subcommand": "union",
+        "pattern": "expr_gene_*.csv",
+        "outdir": "runs/3-node-breast-cancer-deg-pipeline/merge"
+      }
+    },
+    {
+      "id": "deg",
+      "node": "differential-analysis@1.0.0",
+      "config": {
+        "subcommand": "run",
+        "method": "limma",
+        "p_set": "padj",
+        "logfc_cutoff": 0.5,
+        "outdir": "runs/3-node-breast-cancer-deg-pipeline/deg"
+      }
+    }
+  ],
+  "edges": [
+    {"from": "fetch1", "to": "merge"},
+    {"from": "fetch2", "to": "merge"},
+    {"from": "merge", "to": "deg"}
+  ],
+  "file_bindings": {
+    "merge": {
+      "--indir": {
+        "sources": ["fetch1", "fetch2"],
+        "resolve": "data_root",
+        "note": "Node uses recursive=TRUE with pattern=expr_gene_*.csv to find gene-level expression files in each source's output directory"
+      }
+    },
+    "deg": {
+      "--mat": {
+        "source_step": "merge",
+        "semantic_type": "expression_matrix_gene",
+        "prefer": "merged_expression.csv"
+      },
+      "--map": {
+        "source_step": "merge",
+        "semantic_type": "sample_metadata",
+        "prefer": "merged_metadata.csv",
+        "extract_group_col": "er_status",
+        "note": "merged_metadata.csv has many columns; extract sample_id + er_status into two-column CSV for downstream --map parameter"
+      }
+    }
+  },
+  "data_type_notes": {
+    "expression_data": "log2-transformed microarray (GPL96 Affymetrix HG-U133A)",
+    "sample_count": "~800 (GSE25066: 508, GSE20194: 278)",
+    "groups": {"P": "ER-positive", "N": "ER-negative"},
+    "method_rationale": "Using limma because data is log2-transformed microarray, not raw counts — DESeq2/edgeR require integer counts"
+  },
+  "data_flow_warnings": [
+    "deg requires sample_group_map (two-column CSV: sample_id, group) but merge produces merged_metadata.csv with many columns — runtime must extract er_status column into a two-column CSV inline",
+    "GSE25066 and GSE20194 may use different gene symbol conventions — merge union mode will produce NA for genes absent in one dataset"
+  ],
+  "created_at": "2026-06-24T00:00:00Z"
+}
