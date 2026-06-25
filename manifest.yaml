@@ -1,0 +1,47 @@
+schema: node-manifest@1.0
+
+# Node registry — discovered by scanning nodes/ for SKILL.md.
+# Used by compile-workflow to match protocol steps to available nodes.
+
+nodes:
+  geo-microarray-processing:
+    source: git
+    url: https://github.com/bobo-xxx/medflow-geo-microarray.git
+    versions:
+      - version: "1.0.0"
+        commit: "d06ebfd"
+    description: "Fetch and process GEO microarray expression data with 5-tier fallback"
+    subcommands: [fetch]
+    produces: [probe_expression_matrix, gene_expression_matrix, sample_metadata_table]
+    file_layout:
+      nesting: "{gse_id}/"
+
+  batch-correction:
+    source: git
+    url: https://github.com/bobo-xxx/medflow-batch-correction.git
+    versions:
+      - version: "1.0.0"
+        commit: "bfde1b9"
+    description: "Merge multiple gene expression datasets via intersection or union"
+    subcommands: [union, intersect]
+    produces: [merged_expression, merged_metadata]
+    file_discovery:
+      recursive: true
+      pattern: "expr_gene_*.csv"
+      sidecar:
+        - input_pattern: "expr_gene_*"
+          companion_pattern: "metadata_*"
+          needed_for: "merged_metadata.csv"
+
+  differential-analysis:
+    source: git
+    url: https://github.com/bobo-xxx/medflow-differential-analysis.git
+    versions:
+      - version: "1.0.0"
+        commit: "1b4b6f2"
+    description: "Differential expression analysis comparing case vs control groups"
+    subcommands: [run, validate-input, validate-output]
+    consumes: [expression_matrix, sample_group_map]
+    produces: [differential_expression_results, volcano_plot, heatmap_plot]
+    default_method: "DESeq2"
+    note: "For log2-transformed microarray data, override method to limma"
