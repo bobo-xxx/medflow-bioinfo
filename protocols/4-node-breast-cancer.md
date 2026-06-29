@@ -32,11 +32,13 @@ fetch1:
   subcommand: fetch
   gse_id: GSE25066
   rename: er_status_ihc:group
+  proxy: http://127.0.0.1:2999
 
 fetch2:
   subcommand: fetch
   gse_id: GSE20194
   rename: er_status:group
+  proxy: http://127.0.0.1:2999
 
 merge:
   subcommand: intersect
