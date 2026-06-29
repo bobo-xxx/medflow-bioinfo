@@ -10,7 +10,7 @@ nodes:
     url: https://github.com/bobo-xxx/medflow-geo-microarray.git
     versions:
       - version: "1.0.0"
-        commit: "d06ebfd"
+        commit: "a922cd5"
         sha256: ""
 
   batch-correction:
@@ -18,7 +18,7 @@ nodes:
     url: https://github.com/bobo-xxx/medflow-batch-correction.git
     versions:
       - version: "1.0.0"
-        commit: "bfde1b9"
+        commit: "76f9b98"
         sha256: ""
 
   differential-analysis:
@@ -26,5 +26,13 @@ nodes:
     url: https://github.com/bobo-xxx/medflow-differential-analysis.git
     versions:
       - version: "1.0.0"
-        commit: "1b4b6f2"
+        commit: "860f4d2"
+        sha256: ""
+
+  go-kegg-enrichment:
+    source: git
+    url: https://github.com/bobo-xxx/medflow-go-kegg-enrichment.git
+    versions:
+      - version: "1.0.0"
+        commit: "3eb8183"
         sha256: ""

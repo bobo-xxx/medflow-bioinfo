@@ -1,4 +1,4 @@
-# Protocol: 3-Node Breast Cancer DEG Pipeline
+# Protocol: 4-Node Breast Cancer DEG Pipeline
 
 **Planner Agent:** manual-test | **Confidence:** high | **Decision:** proceed
 
@@ -15,6 +15,14 @@ prognosis, and treatment responses. Grouping by `er_status` column (P = positive
 **Group labels:** `P` (ER-positive) vs `N` (ER-negative)
 **Datasets:** GSE25066 + GSE20194 (breast cancer, GPL96 platform)
 
+**Per-dataset group columns:**
+| Dataset | Group column | Values | Notes |
+|---------|-------------|--------|-------|
+| GSE25066 | `er_status_ihc` | P, N | ER status by immunohistochemistry |
+| GSE20194 | `er_status` | P, N | ER status |
+
+Both columns represent the same biology. Each fetch extracts its dataset's column into a standardized `sample_group.csv` for downstream.
+
 ---
 
 ## config
@@ -23,21 +31,22 @@ prognosis, and treatment responses. Grouping by `er_status` column (P = positive
 fetch1:
   subcommand: fetch
   gse_id: GSE25066
-  proxy: null
-  api_key: null
+  rename: er_status_ihc:group
 
 fetch2:
   subcommand: fetch
   gse_id: GSE20194
-  proxy: null
-  api_key: null
+  rename: er_status:group
 
 merge:
-  subcommand: union
+  subcommand: intersect
 
 deg:
   subcommand: run
-  group_col: er_status
+
+enrich:
+  subcommand: enrich
+  tax_id: "9606"
 ```
 
 ---
@@ -51,6 +60,7 @@ flowchart TD
     A[fetch1] --> C[merge]
     B[fetch2] --> C[merge]
     C --> D[deg]
+    D --> E[enrich]
 ```
 
 ### Detailed Steps
@@ -61,6 +71,7 @@ flowchart TD
 | fetch2 | GEO data retrieval | geo-microarray-processing | — | probe + gene expression + metadata | — | — |
 | merge | Batch correction merge | batch-correction | gene expression matrices | merged expression + metadata | — | — |
 | deg | Differential expression (ER+ vs ER-) | differential-analysis | merged expression, sample metadata | DEGs, volcano, heatmap | — | — |
+| enrich | GO/KEGG enrichment of DEGs | go-kegg-enrichment | DEG gene list | enrichment tables, bar/bubble plots | — | — |
 
 ---
 
