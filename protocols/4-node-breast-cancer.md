@@ -40,13 +40,16 @@ fetch2:
 
 merge:
   subcommand: intersect
+  batch_correction: true
 
 deg:
   subcommand: run
+  method: limma
+  logfc_cutoff: 0.5
 
 enrich:
   subcommand: enrich
-  tax_id: "9606"
+  tax-id: "9606"
 ```
 
 ---
@@ -69,7 +72,7 @@ flowchart TD
 |------|--------|----------------|-------|--------|--------------|----------|
 | fetch1 | GEO data retrieval | geo-microarray-processing | — | probe + gene expression + metadata | — | — |
 | fetch2 | GEO data retrieval | geo-microarray-processing | — | probe + gene expression + metadata | — | — |
-| merge | Batch correction merge | batch-correction | gene expression matrices | merged expression + metadata | — | — |
+| merge | Gene intersection + ComBat | batch-correction | gene expression matrices | shared expression + metadata + PCA plots | — | — |
 | deg | Differential expression (ER+ vs ER-) | differential-analysis | merged expression, sample metadata | DEGs, volcano, heatmap | — | — |
 | enrich | GO/KEGG enrichment of DEGs | go-kegg-enrichment | DEG gene list | enrichment tables, bar/bubble plots | — | — |
 
