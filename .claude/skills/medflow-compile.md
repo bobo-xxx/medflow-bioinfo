@@ -276,7 +276,13 @@ Write to `workflows/<name>.json`:
 }
 ```
 
-### 9. Report
+### 9. Run medflow-audit
+
+After writing workflow.json, load and run `medflow-audit` skill.
+- If audit passes: proceed to medflow-run.
+- If audit fails with CRITICAL violations: halt. Fix the issues before execution.
+
+### 10. Report
 
 - Workflow name, step count, edge count
 - Node assignments per step with versions
@@ -284,3 +290,4 @@ Write to `workflows/<name>.json`:
 - File bindings: which files flow between which steps
 - Data flow warnings (if any)
 - Unresolved steps (if any)
+- Audit result (pass/fail)
