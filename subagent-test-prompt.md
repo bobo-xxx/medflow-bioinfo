@@ -4,7 +4,7 @@ files in this directory. Start from scratch.
 1. Read .claude/skills/compile-workflow.md and follow it
 2. Read .claude/skills/run-workflow.md and follow it
 3. The protocol to compile and run is <PROTOCOL_PATH>
-4. Nodes are listed in registry.yaml — clone missing ones from their URLs
+4. Nodes are listed in registry.yaml — delete any existing nodes/ directory and clone ALL nodes fresh from their registry URLs (do not reuse cached copies)
 5. Trust the protocol config as written — do not reassign or reinterpret keys
 
 Report: status per step, files produced, any output mismatches.
