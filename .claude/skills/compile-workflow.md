@@ -66,7 +66,17 @@ For each step, map the protocol's research question and config section to node p
 
 **From config YAML block:**
 - Read per-step key-value pairs
-- Map YAML keys to node parameter names (underscore → hyphen, e.g. `gse_id` → `--gse-id`)
+- Map YAML keys to node parameter names using this transform:
+
+  | Transform | Example |
+  |-----------|---------|
+  | Underscore `_` → hyphen `-` | `gse_id` → `gse-id` |
+  | Add `--` prefix | `gse-id` → `--gse-id` |
+  | Match against node's `parameters[].name` | `--gse-id` matches `--gse-id` |
+  | Bool params: pass as flag (no value) when `true` | `batch_correction: true` → `--batch-correction` |
+
+  Do NOT skip the transform — every YAML key goes through underscore→hyphen→prefix→match.
+  If the final form does not match any parameter name, flag it (caught by §6 audit gate).
 
 **From research question:**
 - If the question defines a group comparison (e.g. "ER+ vs ER-"), derive:
@@ -81,6 +91,24 @@ For each step, map the protocol's research question and config section to node p
 - Open a sample input file and check: integer counts? log2 values? normalized?
 - Set `--method` accordingly, overriding defaults if needed
 
+**From group column resolution:**
+
+When the research question defines a group comparison, resolve `group_col` against actual upstream metadata BEFORE assigning it to any node config. A column name present in one dataset but absent in another will silently drop samples and cause non-reproducible results.
+
+For each upstream dataset that feeds the merge step:
+
+1. Open the metadata CSV (by convention, or from `manifest.yaml` `file_discovery.sidecar`)
+2. List all column names: direct columns AND `characteristics_ch1` key:value keys
+3. Check whether `group_col` exists exactly
+
+| Coverage | Action |
+|----------|--------|
+| Exact match in ALL upstream datasets | Assign `group_col: <name>` to the merge step config. Run agent passes `--group-col`, node produces `sample_group_map.csv` directly. |
+| Mismatch — exists in some datasets, different name in others | Do NOT set `--group-col` on merge. Run the §6a equivalence search. If equivalents found in all datasets, embed `extract_group_col` with `per_dataset` in `file_bindings` for the deg step. Run agent coalesces at runtime. |
+| Missing from ≥1 dataset with no equivalent found | Escalate as a data flow error. Cannot proceed — the group column cannot be resolved for all samples. |
+
+If upstream metadata is not yet available (nodes not fetched), note `group_col` as provisional — §6a validation must be re-run after node fetch.
+
 ### 6. Validate Config Against Node Parameters
 
 After assigning config to steps, verify each key against the target node's declared parameters (from SKILL.md):
@@ -93,6 +121,19 @@ After assigning config to steps, verify each key against the target node's decla
 3. **If no node in the pipeline accepts the key:** flag as a config warning in `data_flow_warnings`.
    - The protocol author may have specified a config that no available node supports.
 4. **If a required parameter has no config value:** check the node's `default` field. If no default, flag as an error — the run will fail.
+
+5. **Config audit gate — review all warnings before writing workflow.json:**
+
+   After validation, review every warning and error. Categorize each:
+
+   | Severity | Pattern | Action |
+   |----------|---------|--------|
+   | **CRITICAL** | Config key mapped to NO node parameter in the pipeline | **HALT.** Do not write workflow.json. Report the unresolved key with its step and protocol source. |
+   | **OK** | Config key reassigned to a different step (matched there) | Note in workflow, proceed. |
+   | **OK** | Required parameter missing but has default | Note default used, proceed. |
+   | **OK** | Conditional output absent (flag not passed) | Expected, proceed. |
+
+   **If any CRITICAL warning exists, do NOT write workflow.json.** Halt and report all critical warnings. The protocol config must be fixed before compilation can succeed.
 
 ### 6a. Validate Group Column Coverage
 
@@ -113,15 +154,14 @@ When a research question specifies a group column (e.g., `group_col: er_status`)
 
 **If equivalent column found in some datasets:**
 - Flag as data flow warning: `"Column 'er_status' exists in GSE20194 (278 samples) but not GSE25066. GSE25066 has 'er_status_ihc:ch1' (502 samples, values={P,N}). Columns represent the same biology — coalescing into unified 'er_status'."`
-- Embed deterministic coalesce logic in `file_bindings` so the run agent doesn't guess:
+- Embed a dataset-oriented extract directive in `file_bindings` so the run agent uses the exact column name per dataset — no guessing:
   ```json
   "extract_group_col": {
     "unified_name": "er_status",
-    "sources": {
-      "er_status": ["P", "N"],
-      "er_status_ihc:ch1": ["P", "N"]
-    },
-    "fallback_chain": ["er_status", "er_status_ihc:ch1"]
+    "per_dataset": {
+      "GSE25066": {"column": "er_status_ihc:ch1", "values": ["P", "N"]},
+      "GSE20194": {"column": "er_status:ch1",    "values": ["P", "N"]}
+    }
   }
   ```
 
@@ -183,7 +223,8 @@ Write to `workflows/<name>.json`:
       "id": "merge",
       "node": "batch-correction@1.0.0",
       "config": {
-        "subcommand": "union",
+        "subcommand": "intersect",
+        "group_col": "er_status",
         "pattern": "expr_gene_*.csv",
         "outdir": "runs/<workflow>/merge"
       }
@@ -195,7 +236,8 @@ Write to `workflows/<name>.json`:
         "subcommand": "run",
         "method": "limma",
         "p_set": "padj",
-        "logfc_cutoff": "0.5"
+        "logfc_cutoff": "0.5",
+        "outdir": "runs/<workflow>/deg"
       }
     }
   ],
@@ -216,15 +258,11 @@ Write to `workflows/<name>.json`:
       "--mat": {
         "source_step": "merge",
         "semantic_type": "expression_matrix",
-        "prefer": "merged_expression.csv",
-        "fallback": "first .csv matching 'expression'"
+        "prefer": "shared_expression.csv"
       },
       "--map": {
         "source_step": "merge",
-        "semantic_type": "sample_metadata",
-        "prefer": "merged_metadata.csv",
-        "extract_group_col": "er_status",
-        "note": "merged_metadata.csv has many columns; extract sample_id + er_status into two-column CSV for downstream"
+        "prefer": "sample_group_map.csv"
       }
     }
   },
