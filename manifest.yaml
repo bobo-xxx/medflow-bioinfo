@@ -9,7 +9,6 @@ nodes:
     url: https://github.com/bobo-xxx/medflow-geo-microarray.git
     versions:
       - version: "1.0.0"
-        commit: "d06ebfd"
     description: "Fetch and process GEO microarray expression data with 5-tier fallback"
     subcommands: [fetch]
     produces: [probe_expression_matrix, gene_expression_matrix, sample_metadata_table]
@@ -48,7 +47,6 @@ nodes:
     url: https://github.com/bobo-xxx/medflow-differential-analysis.git
     versions:
       - version: "1.0.0"
-        commit: "1b4b6f2"
     description: "Differential expression analysis comparing case vs control groups"
     subcommands: [run, validate-input, validate-output]
     consumes: [expression_matrix, sample_group_map]
