@@ -24,6 +24,12 @@ nodes:
     versions:
       - version: "1.0.0"
 
+  univariate-filter:
+    source: git
+    url: https://github.com/bobo-xxx/medflow-univariate-filter.git
+    versions:
+      - version: "1.0.0"
+
   go-kegg-enrichment:
     source: git
     url: https://github.com/bobo-xxx/medflow-go-kegg-enrichment.git

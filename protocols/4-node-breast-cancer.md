@@ -44,6 +44,12 @@ merge:
   subcommand: intersect
   batch_correction: true
 
+univariate:
+  subcommand: run
+  outcome: group
+  outcome-type: binary
+  method: logistic
+
 deg:
   subcommand: run
   method: limma
@@ -64,8 +70,9 @@ enrich:
 flowchart TD
     A[fetch1] --> C[merge]
     B[fetch2] --> C[merge]
-    C --> D[deg]
-    D --> E[enrich]
+    C --> D[univariate]
+    D --> E[deg]
+    E --> F[enrich]
 ```
 
 ### Detailed Steps
@@ -75,7 +82,8 @@ flowchart TD
 | fetch1 | GEO data retrieval | geo-microarray-processing | — | probe + gene expression + metadata | — | — |
 | fetch2 | GEO data retrieval | geo-microarray-processing | — | probe + gene expression + metadata | — | — |
 | merge | Gene intersection + ComBat | batch-correction | gene expression matrices | shared expression + metadata + PCA plots | — | — |
-| deg | Differential expression (ER+ vs ER-) | differential-analysis | merged expression, sample metadata | DEGs, volcano, heatmap | — | — |
+| univariate | Univariate logistic regression | univariate-filter | shared expression, sample group map | significant genes (P<0.05) | — | — |
+| deg | Differential expression (ER+ vs ER-) | differential-analysis | shared expression, filtered gene list | DEGs, volcano, heatmap | — | — |
 | enrich | GO/KEGG enrichment of DEGs | go-kegg-enrichment | DEG gene list | enrichment tables, bar/bubble plots | — | — |
 
 ---
