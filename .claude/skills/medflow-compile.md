@@ -281,6 +281,9 @@ Write to `workflows/<name>.json`:
 After writing workflow.json, load and run `medflow-audit` skill.
 - If audit passes: proceed to medflow-run.
 - If audit fails with CRITICAL violations: halt. Fix the issues before execution.
+- If audit returns DEFERRED checks: medflow-run may execute only the
+  prerequisite fetch steps named by the audit. Repeat medflow-audit on the
+  fetched outputs before merge, DEG, enrichment, or filtering.
 
 ### 10. Report
 

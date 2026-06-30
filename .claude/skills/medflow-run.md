@@ -15,7 +15,11 @@ Execute a workflow from a workflow.json file.
 
 Read `workflow.json`. Validate structure: steps, edges, each step has `id`, `node`, `config`.
 
-**Prerequisite:** medflow-audit must pass before execution. If audit failed, do NOT proceed.
+**Prerequisite:** medflow-audit must run before execution.
+- `pass`: proceed with the DAG.
+- `fail`: do not execute any step.
+- `deferred`: execute only prerequisite fetch steps identified by the audit,
+  repeat medflow-audit on their outputs, and proceed only after it passes.
 
 **If `file_bindings` is present:** Use it as the authoritative wiring map. `file_bindings` was produced by medflow-compile and contains exact file resolution instructions. The checklist items marked `[fb]` below can skip inference — use the binding directly.
 
