@@ -128,7 +128,15 @@ For each step, create this exact checklist and work through it:
 - Apply overrides
 
 **8. Env ready:**
-- Create env if not exists: `conda env create -f <env-file> -p runs/<workflow>/envs/<step-id>`
+- Check if a functional env already exists at `runs/<workflow>/envs/<step-id>/`:
+  ```bash
+  ls runs/<workflow>/envs/<step-id>/bin/R  # or bin/python
+  ```
+- If exists and the binary is executable: skip creation, use it directly.
+- If missing or broken: create fresh.
+  ```bash
+  conda env create -f <env-file> -p runs/<workflow>/envs/<step-id>
+  ```
 - Use `--override-channels` or ensure `nodefaults` in env file channels
 - Never use pre-existing global conda environments
 
