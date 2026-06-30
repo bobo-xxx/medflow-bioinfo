@@ -21,17 +21,27 @@ nodes:
     url: https://github.com/bobo-xxx/medflow-batch-correction.git
     versions:
       - version: "1.0.0"
-        commit: "bfde1b9"
-    description: "Merge multiple gene expression datasets via intersection or union"
-    subcommands: [union, intersect]
-    produces: [merged_expression, merged_metadata]
+    description: "Merge multiple gene expression datasets via intersection with always-on ComBat batch correction, boxplot, and PCA QC"
+    subcommands: [intersect]
+    consumes: [expression_matrix_gene]
+    produces: [shared_expression_matrix, batch_corrected_expression, sample_metadata, boxplot, pca_plots]
     file_discovery:
       recursive: true
       pattern: "expr_gene_*.csv"
       sidecar:
         - input_pattern: "expr_gene_*"
           companion_pattern: "metadata_*"
-          needed_for: "merged_metadata.csv"
+          needed_for: "shared_metadata.csv"
+
+  univariate-filter:
+    source: git
+    url: https://github.com/bobo-xxx/medflow-univariate-filter.git
+    versions:
+      - version: "1.0.0"
+    description: "Univariate association tests on each feature against an outcome variable — supports binary, multi-group, continuous, and survival outcomes"
+    subcommands: [run]
+    consumes: [expression_matrix, sample_outcome]
+    produces: [univariate_results, univariate_results_significant, visualization]
 
   differential-analysis:
     source: git
@@ -46,13 +56,16 @@ nodes:
     default_method: "DESeq2"
     note: "For log2-transformed microarray data, override method to limma"
 
-  univariate-filter:
+  go-kegg-enrichment:
     source: git
-    url: https://github.com/bobo-xxx/medflow-univariate-filter.git
+    url: https://github.com/bobo-xxx/medflow-go-kegg-enrichment.git
     versions:
       - version: "1.0.0"
-        commit: "8527190"
-    description: "Filter candidate genes using univariate logistic regression"
-    subcommands: [run]
-    consumes: [expression_matrix, sample_outcome]
-    produces: [univariate_results, univariate_results_significant, visualization]
+    description: "GO (BP/CC/MF) and KEGG pathway enrichment analysis on gene symbol lists using Bioconductor clusterProfiler"
+    subcommands: [enrich, merge, plot-bar, plot-bubble, plot-net, plot-emap]
+    consumes: [gene_symbol_list, deg_results]
+    produces: [go_enrichment_table, kegg_enrichment_table, merged_enrichment_table, bar_plot, bubble_plot, cnet_plots, emap_plot]
+    file_discovery:
+      recursive: false
+      pattern: "*.csv"
+    note: "KEGG outputs are conditional on API availability; node tolerates their absence"
