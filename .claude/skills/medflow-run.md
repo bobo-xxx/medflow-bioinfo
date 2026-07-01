@@ -180,6 +180,10 @@ conda run -p runs/<workflow>/envs/<step-id> --cwd <node-dir> \
 If `file_bindings` for this step contains `extract_group_col` or `transform` directives:
 1. Read the source file identified in the binding
 2. Execute the transformation inline — write a minimal script, not a new node:
+   - When the binding declares `allowed_values`, retain only rows whose group
+     value is in that exact allowlist. Report counts for retained and excluded
+     values. Apply this rule to direct extraction, coalescing, and
+     `combine_rows` transformations.
    - **Single column:** `extract_group_col: "er_status"` → extract `sample_id` + group column:
      ```python
      import csv

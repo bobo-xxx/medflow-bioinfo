@@ -81,6 +81,10 @@ For each step, map the protocol's research question and config section to node p
 **From research question:**
 - If the question defines a group comparison (e.g. "ER+ vs ER-"), derive:
   - `group_col`: the metadata column to use for grouping
+  - `allowed_values`: the exact group labels in the requested contrast
+    (e.g. `["P", "N"]`). Add this to any group-map extraction or
+    row-combination binding so unrelated, indeterminate, and missing labels
+    cannot create an accidental multi-group analysis.
   - `--method`: appropriate statistical method based on:
     - Log2-transformed microarray → `limma`
     - Raw counts (integer values) → `DESeq2` or `edgeR`
@@ -262,7 +266,8 @@ Write to `workflows/<name>.json`:
       },
       "--map": {
         "source_step": "merge",
-        "prefer": "sample_group_map.csv"
+        "prefer": "sample_group_map.csv",
+        "allowed_values": ["P", "N"]
       }
     }
   },

@@ -60,6 +60,10 @@ For group comparisons:
 - Open metadata from every upstream dataset.
 - Inspect direct columns and keys encoded in `characteristics_ch1`.
 - Verify the configured group column or a compiled per-dataset equivalent.
+- When the research question names an exact contrast and upstream data contains
+  additional labels, verify the compiled group-map binding declares those
+  contrast labels as `allowed_values`. Evaluate group counts after applying
+  that allowlist and report excluded-label counts as a warning.
 - Count valid group values and warn when any group contains fewer than ten
   samples.
 - A missing group with no valid compiled equivalent is **CRITICAL**.

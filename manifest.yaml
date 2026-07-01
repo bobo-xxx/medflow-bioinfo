@@ -10,7 +10,7 @@ nodes:
     versions:
       - version: "1.0.0"
     description: "Fetch and process GEO microarray expression data with 5-tier fallback"
-    subcommands: [fetch]
+    subcommands: [fetch, qc, clean]
     produces: [probe_expression_matrix, gene_expression_matrix, sample_metadata_table, sample_group_assignment]
     file_layout:
       nesting: "{gse_id}/"
