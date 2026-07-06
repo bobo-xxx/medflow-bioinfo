@@ -13,8 +13,8 @@ Agent-driven bioinformatics workflow framework. Agents execute multi-node analys
 ```
 medflow-bioinfo/
 ├── protocols/          # Human-authored protocol .md files
-├── workflows/          # Compiled workflow.json files
 ├── nodes/              # Cloned node packages (git repos, one per node)
+├── nodes-archive/      # Compressed node archives (.zip)
 ├── runs/               # Workflow execution outputs
 ├── manifest.yaml       # Node metadata — semantic types, subcommands, file discovery
 └── registry.yaml       # Machine-readable node URLs + versions (no commit pins)
@@ -34,18 +34,17 @@ medflow-bioinfo/
 
 ## Current Pipeline
 
-### 5-Node Breast Cancer DEG Pipeline
+### 7-Node Breast Cancer Diagnostic Pipeline
 
 ```
 fetch1 (GSE25066) ──┐
-                    ├── merge (intersect + ComBat) ── deg (limma) ──┬── enrich (GO+KEGG)
-fetch2 (GSE20194) ──┘                                              └── univariate-filter (logistic)
+                    ├── merge ── deg ──┬── enrich (GO+KEGG)
+fetch2 (GSE20194) ──┘                  └── univariate-filter ── feature-selection ── diagnostic-model
 ```
 
-**Research question:** ER+ vs ER- breast cancer differential expression with pathway enrichment and univariate validation.
+**Research question:** ER+ vs ER- breast cancer — DEGs, pathway enrichment, ML feature selection, and multivariate diagnostic model.
 
-- **Protocol:** `protocols/5-node-breast-cancer.md`
-- **Workflow:** `workflows/5-node-breast-cancer.json`
+- **Protocol:** `protocols/7-node-breast-cancer.md`
 - **Groups:** `er_status` (P = positive, N = negative)
 - **Data:** ~800 samples across GSE25066 + GSE20194 (GPL96 Affymetrix HG-U133A)
 
