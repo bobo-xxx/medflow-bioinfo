@@ -76,10 +76,10 @@ feature-selection:
 flowchart TD
     A[fetch1] --> C[merge]
     B[fetch2] --> C[merge]
-    C --> D[univariate-filter]
-    D --> E[feature-selection]
-    E --> F[deg]
-    F --> G[enrich]
+    C --> D[deg]
+    D --> E[univariate-filter]
+    E --> F[feature-selection]
+    D --> G[enrich]
 ```
 
 ### Detailed Steps
@@ -89,9 +89,9 @@ flowchart TD
 | fetch1 | GEO data retrieval | geo-microarray-processing | — | probe + gene expression + metadata | — | — |
 | fetch2 | GEO data retrieval | geo-microarray-processing | — | probe + gene expression + metadata | — | — |
 | merge | Gene intersection + ComBat | batch-correction | gene expression matrices | shared expression + metadata + PCA plots | — | — |
-| univariate-filter | Univariate logistic regression (ER+ vs ER-) | univariate-filter | shared expression, sample group map | significant genes (padj ≤ 0.1) | outcome must contain exactly P/N | — |
-| feature-selection | RF → LASSO sequential | ml-feature-selection | univariate significant genes, sample group map | selected genes (LASSO nonzero), importance table, CV plots | ≥ 2 genes selected | — |
-| deg | Differential expression (ER+ vs ER-) | differential-analysis | shared expression, sample group map | DEGs restricted to selected genes, volcano, heatmap | — | — |
+| deg | Differential expression (ER+ vs ER-) | differential-analysis | shared expression, sample group map | DEGs (all genes), volcano, heatmap | — | — |
+| univariate-filter | Univariate logistic regression on DEGs | univariate-filter | DEG gene list, shared expression, sample group map | significant genes (padj ≤ 0.1) | outcome must contain exactly P/N | — |
+| feature-selection | RF → LASSO sequential | ml-feature-selection | univariate significant genes, expression, sample group map | selected genes (LASSO nonzero), importance table, CV plots | ≥ 2 genes selected | — |
 | enrich | GO/KEGG enrichment of DEGs | go-kegg-enrichment | DEG gene list | enrichment tables, bar/bubble plots | — | — |
 
 ---
