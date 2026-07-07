@@ -16,15 +16,8 @@ medflow-bioinfo/
 ├── subagent-test-prompt.md    # Clean-sandbox test prompt for subagents
 ├── protocols/                 # Human-authored protocol .md files
 │   └── 7-node-breast-cancer.md
-├── nodes/                     # Cloned node packages (git repos, one per node)
-│   ├── geo-microarray-processing@1.0.0
-│   ├── batch-correction@1.0.0
-│   ├── univariate-filter@1.0.0
-│   ├── differential-analysis@1.0.0
-│   ├── diagnostic-model@1.0.0
-│   ├── ml-feature-selection@1.0.0
-│   └── go-kegg-enrichment@1.0.0
-├── runs/                      # Workflow execution outputs
+├── nodes/                     # Cloned node packages (gitignored, synced from registry)
+├── runs/                      # Workflow execution outputs (gitignored)
 ├── manifest.yaml              # Agent-oriented node metadata
 └── registry.yaml              # Machine-readable node URLs + versions
 ```
