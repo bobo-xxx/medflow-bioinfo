@@ -28,7 +28,7 @@ medflow-bioinfo/
 | `batch-correction` | `intersect` | Merge datasets via gene intersection with always-on ComBat + PCA QC |
 | `univariate-filter` | `run` | Univariate tests (t-test, Wilcoxon, ANOVA, logistic, Cox, correlation) |
 | `differential-analysis` | `run` | DEG analysis with auto-detection (DESeq2/limma/edgeR) |
-| `diagnostic-model` | `train`, `valid`, `visualize` | Multivariate logistic regression with all genes as predictors |
+| `diagnostic-model` | `train`, `valid`, `evaluate`, `visualize` | Multivariate logistic regression with LOOCV, ROC, calibration, DCA |
 | `ml-feature-selection` | `sequential`, `parallel` | ML feature selection — RF, LASSO, consensus, convergence gate |
 | `go-kegg-enrichment` | `enrich`, `merge`, `plot-bar`, `plot-bubble`, `plot-net`, `plot-emap` | GO + KEGG enrichment with clusterProfiler |
 
