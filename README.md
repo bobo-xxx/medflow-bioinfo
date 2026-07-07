@@ -12,22 +12,31 @@ Agent-driven bioinformatics workflow framework. Agents execute multi-node analys
 
 ```
 medflow-bioinfo/
-├── protocols/          # Human-authored protocol .md files
-├── nodes/              # Cloned node packages (git repos, one per node)
-├── nodes-archive/      # Compressed node archives (.zip)
-├── runs/               # Workflow execution outputs
-├── manifest.yaml       # Node metadata — semantic types, subcommands, file discovery
-└── registry.yaml       # Machine-readable node URLs + versions (no commit pins)
+├── CLAUDE.md                  # Project instructions for Claude Code
+├── subagent-test-prompt.md    # Clean-sandbox test prompt for subagents
+├── protocols/                 # Human-authored protocol .md files
+│   └── 7-node-breast-cancer.md
+├── nodes/                     # Cloned node packages (git repos, one per node)
+│   ├── geo-microarray-processing@1.0.0
+│   ├── batch-correction@1.0.0
+│   ├── univariate-filter@1.0.0
+│   ├── differential-analysis@1.0.0
+│   ├── diagnostic-model@1.0.0
+│   ├── ml-feature-selection@1.0.0
+│   └── go-kegg-enrichment@1.0.0
+├── runs/                      # Workflow execution outputs
+├── manifest.yaml              # Agent-oriented node metadata
+└── registry.yaml              # Machine-readable node URLs + versions
 ```
 
 ## Available Nodes
 
 | Node | Subcommands | Purpose |
 |------|------------|---------|
-| `geo-microarray-processing` | `fetch` | Fetch GEO microarray data with 5-tier gene annotation fallback |
+| `geo-microarray-processing` | `fetch`, `qc`, `clean`, `validate-input`, `validate-output` | Fetch GEO microarray data with 5-tier gene annotation fallback |
 | `batch-correction` | `intersect` | Merge datasets via gene intersection with always-on ComBat + PCA QC |
 | `univariate-filter` | `run` | Univariate tests (t-test, Wilcoxon, ANOVA, logistic, Cox, correlation) |
-| `differential-analysis` | `run` | DEG analysis with auto-detection (DESeq2/limma/edgeR) |
+| `differential-analysis` | `run`, `validate-input`, `validate-output` | DEG analysis with auto-detection (DESeq2/limma/edgeR) |
 | `diagnostic-model` | `train`, `valid`, `evaluate`, `visualize` | Multivariate logistic regression with LOOCV, ROC, calibration, DCA |
 | `ml-feature-selection` | `sequential`, `parallel` | ML feature selection — RF, LASSO, consensus, convergence gate |
 | `go-kegg-enrichment` | `enrich`, `merge`, `plot-bar`, `plot-bubble`, `plot-net`, `plot-emap` | GO + KEGG enrichment with clusterProfiler |
