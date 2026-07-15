@@ -52,18 +52,53 @@ Generate the bundle from actual effective runtime values, not hand-written examp
 **Current:** 1.0.0
 **Updated:** 2026-07-08
 
-Bump rules — check commit messages since last tag before every push:
+### Release Version Decision
 
-| Commit prefix | Bump | Example |
-|--------------|------|---------|
-| `fix:` | patch (Z) | 1.0.0 → 1.0.1 |
-| `feat:` | minor (Y) | 1.0.0 → 1.1.0 |
-| `BREAKING:` or SKILL.md input/output change | major (X) | 1.0.0 → 2.0.0 |
-| `chore:`, `docs:`, `refactor:`, `test:` | none | — |
+Determine the next release version from the net public-contract difference
+between the release candidate and the latest version tag already published to
+the remote repository. Only incompatibility with that pushed release changes
+the major version number. Unpublished commits, local or draft version tags, and
+ordinary branch pushes do not establish a new release-version baseline. Do not
+assign a version bump independently to each intermediate commit.
 
-Procedure:
-1. Before push, scan commits since last version bump.
-2. Pick the highest bump level among them.
-3. Update `Current:` and `Updated:` above.
-4. Commit as `chore: bump to X.Y.Z`, push together.
+| Net change relative to last published version | Bump |
+|---|---|
+| Internal refactor, tests, documentation, or correction of an unreleased intermediate change | none |
+| Backward-compatible bug fix that restores documented or intended behavior | patch |
+| Backward-compatible addition to inputs, outputs, parameters, or behavior | minor |
+| Incompatible change to a previously published contract | major |
 
+Commit prefixes describe individual changes but do not mechanically determine
+the release version. Select the highest bump required by the final net change.
+
+### Version Synchronization
+
+The node release version must remain consistent across all authoritative version
+locations, including:
+
+- `SKILL.md` `version:`
+- `CLAUDE.md` `Current:`
+- runtime version constants
+- package metadata
+- registry entries and release tags, when applicable
+
+Determine the release version once, then update every synchronized location to
+that version. Synchronizing version fields does not trigger an additional bump.
+
+If authoritative version locations disagree, the release is incomplete. Resolve
+the mismatch before committing, tagging, or pushing.
+
+A protocol or extension may use an independent version only when it is
+explicitly identified as separate from the node release version.
+
+### Procedure
+
+1. Identify the last published version tag.
+2. Review the net runtime and public-contract difference from that tag.
+3. Select the highest applicable bump from the table.
+4. Keep the existing version when the net change requires no bump.
+5. Update all synchronized version locations.
+6. Update the `Updated:` date.
+7. Verify that all authoritative version values agree.
+8. Commit the release version as `chore: bump to X.Y.Z`.
+9. Push the version commit with the release changes.
