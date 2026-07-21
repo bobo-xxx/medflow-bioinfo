@@ -12,6 +12,9 @@ Compile an analysis protocol document into an immutable MedFlow
 
 **Output**: `workflows/<name>.json` — a machine-readable workflow specification.
 
+The generated workflow `name` must be a safe immutable single directory
+component because audit and run use it as `<workflow>` in run-local paths.
+
 ## Steps
 
 ### 1. Parse the Protocol Document
@@ -37,26 +40,46 @@ use or expect a central node manifest. Discover capabilities, subcommands,
 inputs, outputs, parameters, defaults, file layouts, and exceptions by reading
 each freshly cloned node's `SKILL.md` at the pinned commit.
 
-Clone each node fresh from its `registry.yaml` URL. Remove any target checkout
-with the current platform's native filesystem command only after verifying that
-its resolved absolute path is inside the sandbox, then run:
+Generate one collision-resistant `compile_id` per invocation and a unique
+opaque `candidate_id` per candidate. Clone fresh from its registry URL:
 
 ```text
-git clone <url> nodes/<name>@<version>
+git clone <url> runs/compile/<compile-id>/candidates/<candidate-id>/node
 ```
 
-**Never search, read, copy, or reference any directory outside this sandbox.**
-`git clone` from registry URLs is the only allowed method to obtain nodes.
+Never search, read, copy, or reference outside the sandbox. Registry-URL
+`git clone` is the only node-acquisition method. Never read, pull, update,
+rename, or reuse shared `nodes/`, or put an unverified version in a directory
+name. Record release identity only after the gate passes.
 
-Immediately after cloning, resolve and record:
+Append candidate ID, node/URL, clone time, observed branch/commit, contract
+hash, gate result, and disposition to
+`runs/compile/<compile-id>/candidate-registry.jsonl`. Preserve failures; retry
+with a new candidate ID and fresh clone.
 
-- registry URL and declared version;
-- remote default branch through `refs/remotes/origin/HEAD`;
-- exact commit SHA from `git rev-parse HEAD`.
+#### Release Identity Gate
+
+Before adding a node to the candidate catalog:
+
+1. Resolve the default branch, HEAD commit, and contract hash.
+2. Require exactly one semantic `SKILL.md` frontmatter version equal to a
+   registry version; never default to the first entry or `1.0.0`.
+3. Fetch tags and require canonical `v<version>` or `<version>`; if both exist,
+   they must dereference to the same commit.
+4. Require the dereferenced tag commit to equal default-branch HEAD, not merely
+   be reachable from it.
+5. Record URL, registry/contract version, default branch, commit, contract hash,
+   release tag, and release commit in the step source.
+
+Any missing tag or disagreement among registry version, contract version,
+release tag, and selected commit is **CRITICAL version drift**. Exclude that
+node revision from compilation and report the exact observed values. Do not
+guess a version from commit count, dates, branch names, or commit messages.
 
 The resolved commit is the immutable node revision for this compiled workflow.
 Every workflow step must carry this source record so audit and run can verify
 and execute the same commit even if the remote default branch advances later.
+Compilation never makes its inspection checkout an execution source.
 
 For each node, read:
 - `SKILL.md` frontmatter: `name`, `type`, `inputs`/`outputs` (semantic_type, format), `parameters` (bind, type, required, default), `entry_point`, `file_layout`, `file_discovery`
@@ -67,9 +90,10 @@ behavior. If they disagree, report contract drift and stop compilation for that
 node rather than silently preferring either source.
 
 Build an in-memory catalog from the inspected contracts:
-`{name: {version, url, default_branch, commit, contract_sha256, subcommands,
-produces, consumes, parameters, defaults}}`. Persist the selected contract hash
-and the agent's node/parameter-selection reasoning in `workflow.json`.
+`{name: {version, contract_version, release_tag, release_commit, url,
+default_branch, commit, contract_sha256, subcommands, produces, consumes,
+parameters, defaults}}`. Persist this release identity, the selected contract
+hash, and the agent's node/parameter-selection reasoning in `workflow.json`.
 
 ### 3. Match Steps to Nodes
 
@@ -297,7 +321,8 @@ For each step, produce a `config` block that covers:
 - **Cutoff overrides**: when defaults don't fit the research question or sample size
 - **Group specification**: which column to use, how to map labels
 - **Immutable source**: registry URL, declared version, resolved default branch,
-  exact commit SHA, and pinned `SKILL.md` SHA-256
+  exact commit SHA, pinned `SKILL.md` SHA-256, contract version, matching
+  release tag, and dereferenced release commit
 - **Parameter provenance**: protocol/default/inspection/agent-filled source and
   rationale for every value
 - **Step intent**: capability, scientific goal, and required semantic inputs
@@ -345,7 +370,10 @@ Write to `workflows/<name>.json`:
         "version": "1.0.0",
         "default_branch": "main",
         "commit": "<40-hex-sha>",
-        "contract_sha256": "<skill-md-sha256>"
+        "contract_sha256": "<skill-md-sha256>",
+        "contract_version": "1.0.0",
+        "release_tag": "v1.0.0",
+        "release_commit": "<40-hex-sha>"
       },
       "config": {
         "subcommand": "fetch",
@@ -370,7 +398,10 @@ Write to `workflows/<name>.json`:
         "version": "1.0.0",
         "default_branch": "main",
         "commit": "<40-hex-sha>",
-        "contract_sha256": "<skill-md-sha256>"
+        "contract_sha256": "<skill-md-sha256>",
+        "contract_version": "1.0.0",
+        "release_tag": "v1.0.0",
+        "release_commit": "<40-hex-sha>"
       },
       "config": {
         "subcommand": "fetch",
@@ -395,7 +426,10 @@ Write to `workflows/<name>.json`:
         "version": "1.0.0",
         "default_branch": "main",
         "commit": "<40-hex-sha>",
-        "contract_sha256": "<skill-md-sha256>"
+        "contract_sha256": "<skill-md-sha256>",
+        "contract_version": "1.0.0",
+        "release_tag": "v1.0.0",
+        "release_commit": "<40-hex-sha>"
       },
       "config": {
         "subcommand": "intersect",
@@ -422,7 +456,10 @@ Write to `workflows/<name>.json`:
         "version": "1.0.0",
         "default_branch": "main",
         "commit": "<40-hex-sha>",
-        "contract_sha256": "<skill-md-sha256>"
+        "contract_sha256": "<skill-md-sha256>",
+        "contract_version": "1.0.0",
+        "release_tag": "v1.0.0",
+        "release_commit": "<40-hex-sha>"
       },
       "config": {
         "subcommand": "run",

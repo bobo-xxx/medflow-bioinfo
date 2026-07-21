@@ -12,6 +12,9 @@ Execute a new workflow from `workflow.json` or resume an existing workflow from
 `runs/<workflow-name>/<workflow-run-id>/workflow-run.json` for a resume. Default
 is real conda execution. Use `--stub` for validation only.
 
+In paths below, `<workflow>` means the immutable compiled workflow `name`
+field, validated as a safe single directory component.
+
 ## Steps
 
 ### 1. Load Workflow
@@ -21,8 +24,9 @@ schema `1.0`, `1.1`, or a missing version and require recompilation. Validate
 steps, edges, and each step's `id`, `intent`, `node`, immutable `source` record,
 and `config`. The source record must contain
 the registry URL, declared version, resolved default branch, and exact commit
-SHA, plus the compiled `SKILL.md` contract hash. A legacy workflow without an
-exact commit, contract hash, or semantic step intent must be recompiled.
+SHA, plus the compiled `SKILL.md` contract hash, contract version, release tag,
+and dereferenced release commit. A legacy workflow without an exact commit,
+contract hash, release identity, or semantic step intent must be recompiled.
 
 Create `<workflow-run-id>` from a UTC timestamp plus a short random suffix, for
 example `20260715T143012Z-a4c91f`. Create the run root, atomically create
@@ -86,12 +90,10 @@ nodes. Before dispatching the consuming step:
 For each step:
 1. Parse `node` field: `<name>@<version>` and read the step's immutable `source`
    record. Do not resolve an unversioned node to "latest" at run time.
-2. Read `registry.yaml` and confirm its URL matches `source.url`.
-3. Read the freshly cloned node's `SKILL.md` for subcommands, parameters,
-   defaults, inputs/outputs, file layout, discovery rules, and exceptions. Do
-   not use or expect a central node manifest. Verify its SHA-256 equals the
-   compiled contract hash before using any filled parameter.
-4. **Always clone fresh from `source.url` in workflow-managed attempt source storage:**
+2. Read `registry.yaml` and confirm its URL matches `source.url` and the exact
+   compiled version remains listed for the node. Do not replace it with a newer
+   registry version at runtime.
+3. **Always clone fresh from `source.url` in workflow-managed attempt source storage:**
    Generate the attempt UUID as specified under Execute, create the workspace,
    and clone into `<run-root>/sources/<attempt-uuid>/node/`. Never place a
    checkout inside the node's `--outdir` or share a mutable node checkout
@@ -107,6 +109,25 @@ For each step:
    dispatch, including retries; never reuse another workspace's checkout or
    replace the pin with the current remote HEAD.
 
+   Never read, pull, update, rename, or reuse a shared `nodes/` checkout, and
+   never run `git pull` for node acquisition. A failed clone or checkout keeps
+   its workspace evidence; retry only in a new workspace ID with another fresh
+   clone.
+
+4. Read that workspace's freshly cloned `node/SKILL.md` for subcommands,
+   parameters, defaults, inputs/outputs, file layout, discovery rules, and
+   exceptions. Do not use or expect a central node manifest. Verify its SHA-256
+   equals the compiled contract hash before using any filled parameter. Parse
+   exactly one semantic `version` and require it to equal `source.version` and
+   `source.contract_version`.
+
+   Fetch tags and resolve `source.release_tag`, dereferencing annotated tags.
+   Require it to equal both `source.release_commit` and `source.commit`, and
+   require its name to be canonical for the contract version (`v<version>` or
+   `<version>`). Any registry, contract, tag, or commit mismatch stops dispatch
+   as release drift; never rewrite the workflow or select another version
+   silently.
+
    For a declared `NODE_PATCH`, verify `node.patch` and its SHA-256, run
    `git apply --check`, apply the patch to this clean detached checkout, and
    confirm the resulting diff and file hashes exactly match
@@ -117,9 +138,7 @@ For each step:
    - **Never use `cp -r`, `rsync`, or `ln -s` to obtain node packages** — always `git clone` from `registry.yaml` URLs.
    - **Never symlink files** — symlinks break sidecar file lookups (dirname resolution) and env file discovery.
    - If a node's git URL is unreachable, report the error and stop. Do not search for alternatives outside the sandbox.
-6. **Read `SKILL.md`** to get the full node contract (parameters, entry point,
-   environment file, inputs, outputs, layouts, and exceptions).
-7. **Read the node's entry point** (`scripts/main.R` or `scripts/main.py`):
+6. **Read the node's entry point** (`scripts/main.R` or `scripts/main.py`):
    - Treat `SKILL.md` as the declared contract and the entry point as observed
      implementation behavior.
    - Verify the implementation matches declared subcommands, parameters,

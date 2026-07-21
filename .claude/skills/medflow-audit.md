@@ -10,11 +10,18 @@ snapshot before execution, and proposed full plan snapshots created for reruns,
 replacement nodes, or downstream replanning. Schema `1.0` and `1.1` workflows
 are not executable and must be recompiled.
 
+In paths below, `<workflow>` means the immutable compiled workflow `name`
+field, validated as a safe single directory component.
+At audit start, generate one collision-resistant `audit_id`; use it for every
+audit clone, remediation-authoring clone, log, and registry event in that
+invocation.
+
 The audit rejects demonstrated incompatibility, not naming differences or
 dependencies with a documented, verified installation fallback.
 
-The audit may edit a pinned node checkout or write adapter/helper code when a
-finding can be repaired without silently changing scientific meaning. Every
+The audit may edit a fresh remediation-authoring clone of a pinned node or
+write adapter/helper code when a finding can be repaired without silently
+changing scientific meaning. Every
 repair must be labeled, reproducible from the pinned inputs and node commit,
 tested, and re-audited before execution continues.
 
@@ -56,8 +63,9 @@ then perform one of these remediations:
 - **INPUT_ADAPTER**: write deterministic code that creates a new run-local
   derived input, such as column renaming, exact label filtering, transposition,
   feature subsetting, or schema normalization.
-- **NODE_PATCH**: edit the pinned node checkout to fix an implementation defect
-  while preserving the declared scientific method and public contract.
+- **NODE_PATCH**: edit a fresh remediation-authoring clone of the pinned node to
+  fix an implementation defect while preserving the declared scientific method
+  and public contract.
 - **HELPER_CODE**: write a missing deterministic conversion, validation, or
   orchestration helper required to connect declared-compatible artifacts.
 - **ENVIRONMENT_FIX**: amend only the isolated runtime environment or install a
@@ -125,8 +133,8 @@ and finding identity.
 - `label: MEDFLOW_AUDIT_GENERATED_REMEDIATION`;
 - finding ID, remediation type, UTC creation time, and rationale;
 - workflow path and pre-remediation workflow SHA-256;
-- node name, registry URL, declared version, default branch, and pinned base
-  commit when a node is involved;
+- node name, registry URL, registry/contract version, release tag/commit,
+  default branch, and pinned base commit when a node is involved;
 - raw input paths and SHA-256 checksums without copying or changing them;
 - every generated, modified, and derived file;
 - exact command, working directory, environment, random seeds, and expected
@@ -143,6 +151,19 @@ For a node edit, preserve the registry commit as the immutable base, export the
 complete change as `node.patch`, and record its SHA-256. A future run must clone
 the pinned base commit and apply that exact patch; an unrecorded dirty checkout
 is never an executable source.
+
+To author a node patch, generate a unique `authoring_id`, clone the registry URL
+fresh into:
+
+```text
+runs/<workflow>/audit/<audit-id>/remediation-authoring/<finding-id>/<authoring-id>/node
+```
+
+Checkout the pinned base commit detached, verify release/contract identity,
+make the edit there, and export the complete diff into the remediation bundle.
+Record the authoring workspace, clone command, base/diff hashes, and disposition
+in the audit registry. Preserve the authoring workspace as evidence; never use
+a shared `nodes/` checkout or execute its dirty tree directly.
 
 Use this minimum manifest shape:
 
@@ -161,6 +182,9 @@ node:
   name: "<node-or-null>"
   url: "<registry-url-or-null>"
   version: "<version-or-null>"
+  contract_version: "<version-or-null>"
+  release_tag: "<tag-or-null>"
+  release_commit: "<sha-or-null>"
   base_commit: "<sha-or-null>"
 inputs:
   - path: "<immutable-source-path>"
@@ -358,20 +382,54 @@ When the group map and expression matrix exist:
 
 ### 5. Node Version Audit
 
-For every node directory:
+Using the invocation's `audit_id`, generate a unique `audit_node_id` for every
+compiled step and clone `source.url` into:
+
+```text
+runs/<workflow>/audit/<audit-id>/nodes/<audit-node-id>/node
+```
+
+Checkout the compiled commit in detached state, then perform this check only
+against that fresh audit clone. Append lifecycle events to:
+
+```text
+runs/<workflow>/audit/<audit-id>/audit-workspace-registry.jsonl
+```
+
+Each event must include audit/node IDs, workflow and step IDs, workspace path,
+registry URL, requested/observed commit, contract hash/version, release tag and
+commit, command, UTC time, status, finding IDs, and disposition. Never rewrite
+registry history. Never read, pull, update, rename, or reuse a shared `nodes/`
+checkout; never use `git pull` during audit. A repeated audit uses a new
+`audit_id` and fresh clones.
+
+For every fresh audit clone:
 
 - Require the compiled workflow step to record its registry URL, declared
   version, resolved default branch, exact commit SHA, and node `SKILL.md`
-  SHA-256. A workflow without an exact commit or contract hash is **CRITICAL**
-  and must be recompiled.
+  SHA-256, contract version, release tag, and dereferenced release commit. A
+  workflow missing any field is **CRITICAL** and must be recompiled.
 - Confirm the workflow URL matches the current `registry.yaml` entry. A
   mismatch is **CRITICAL** because node provenance is ambiguous.
-- Run `git fetch origin`.
-- Verify the recorded commit exists in the cloned repository and compare local
-  HEAD with that commit. A mismatch is **CRITICAL**; checkout the pinned commit
-  and repeat the audit rather than switching to the latest remote revision.
+- Confirm the compiled version remains listed for that node in `registry.yaml`.
+  It need not be the newest listed version, but an absent version is
+  **CRITICAL** because the release is no longer registry-resolvable.
+- Fetch tags in the fresh clone when the initial clone did not include them.
+- Verify the recorded commit exists in the clone and compare detached HEAD with
+  that commit. A mismatch is **CRITICAL**; append a `rejected` disposition,
+  preserve the audit-node workspace and evidence, and retry with a new
+  `audit_node_id` and fresh clone rather than switching a shared checkout.
 - Hash the pinned node's `SKILL.md` and compare it with the compiled contract
   hash. A mismatch is **CRITICAL** because parameter provenance is ambiguous.
+- Parse exactly one semantic `version` from the pinned `SKILL.md`; require it
+  to equal both the compiled contract version and compiled registry version.
+  Missing, malformed, duplicate, or unequal versions are **CRITICAL contract
+  drift**.
+- Fetch tags, resolve the recorded canonical `v<version>` or `<version>` tag,
+  dereference annotated tags, and require it to equal the compiled release
+  commit and pinned node commit. A missing, moved, ambiguous, or unequal tag is
+  **CRITICAL release drift**. Do not repair this by checking out a different
+  commit or relabeling the workflow.
 - Resolve the current remote default branch through `refs/remotes/origin/HEAD`.
   If it has advanced beyond the pinned commit, report a **WARNING** for a newer
   available revision but continue auditing the pinned workflow.
