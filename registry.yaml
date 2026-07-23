@@ -60,3 +60,21 @@ nodes:
     url: https://github.com/bioinfo-skillful/medflow-external-validation.git
     versions:
       - version: "1.2.0"
+
+  immune-infiltration:
+    source: git
+    url: https://github.com/bioinfo-skillful/medflow-immune-infiltration.git
+    versions:
+      - version: "1.0.0"
+
+  regulatory-network:
+    source: git
+    url: https://github.com/bioinfo-skillful/medflow-regulatory-network.git
+    versions:
+      - version: "1.0.0"
+
+  risk-stratification:
+    source: git
+    url: https://github.com/bioinfo-skillful/medflow-risk-stratification.git
+    versions:
+      - version: "1.0.0"
